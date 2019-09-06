@@ -1,9 +1,7 @@
 # ESP-IDF MJD TMP36 Analog Temperature Sensor
-This is a component for the ESP-IDF software framework of the ESP32 hardware from Espressif.
+This component **mjd_tmp36** is developed for **the TMP36 Analog Temperature Sensor** from Analog Devices. It is a component for the ESP-IDF software framework of the ESP32 hardware from Espressif.
 
-This component mjd_tmp36 is developed for **the TMP36 Analog Temperature Sensor** from Analog Devices.
-
-This component mjd_tmp36 converts the raw voltage reading of the sensor (read by an ADC) to the ambient temperature in Degrees Celsius.
+This component mjd_tmp36 converts the raw voltage reading of the sensor (read by the ADC) to the ambient temperature in degrees Celsius.
 
 More information about the device:
 - Adafruit Learning: TMP36 Temperature Sensor <https://learn.adafruit.com/tmp36-temperature-sensor/overview>
@@ -11,7 +9,7 @@ More information about the device:
 
 
 ## Example ESP-IDF project(s)
-```esp32_tmp36_sensor_ads1115_adc_using_lib``` This project demonstrates the components mjd_ads1115 and mjd_tmp36. The **mjd_ads1115 component** for the TI ADS1115 Analog-To-Digital-Convertor is used to read, accurately and linearly, the voltage output of the analog temperature sensor. The **mjd_tmp36 component** for the TMP36 sensor is used to convert the raw voltage reading of the ADC to the ambient temperature in Degrees Celsius transparently.
+```esp32_tmp36_sensor_ads1115_adc_using_lib``` This project demonstrates the components mjd_ads1115 and mjd_tmp36. The **mjd_ads1115 component**, for the TI ADS1115 Analog-To-Digital-Convertor, is used to read the voltage output of the analog temperature sensor. The **mjd_tmp36 component**, for the TMP36 analog temperature sensor, is used to convert the raw voltage reading of the ADC to the ambient temperature in Degrees Celsius transparently.
 
 
 
@@ -19,13 +17,7 @@ More information about the device:
 
 [ Go to the _doc folder for photo's.]
 
-- Adafruit TMP36 Analog Gas Sensor.
-
-
-
-## Wiring Instructions
-
-The specific wiring instructions are documented in the  ESP-IDF example project(s).
+- Adafruit TMP36 Analog Temperature Sensor.
 
 
 
@@ -39,6 +31,18 @@ PIN#  PIN NAME	  Description
  1    VCC         Power supply (3.3V for the ESP32)
  2    VOUT        Voltage Output
  3    GND         Ground
+```
+
+
+
+## Wiring Instructions
+
+The specific wiring instructions are documented in the  ESP-IDF example project(s).
+
+```
+- Connect a 0.1uF ceramic capacitor between the TMP36's pins VCC and GND. It should be as close as possible to the VCC pin of the sensor.
+- Connect also a +-2.2uF tantalum capacitor between the TMP36's pins VCC and GND when the
+device is operated in the presence of high frequency radiated or conducted noise.
 ```
 
 
@@ -65,19 +69,13 @@ PIN#  PIN NAME	  Description
 - Output Voltage Scaling: 10 milliVolt / °C
 - Output Voltage at 25°C: 750 milliVolt
 - Do not read the output at very high frequencies else the unit might overheat and influence the readings.
-- Less than 50 µA quiescent current
-- The TMP36 is functionally compatible with the LM50.
-- Noise: add a 0.1 µF ceramic bypass capacitor between the pins VCC and GND.
-- For long wires (> 1 meter): add a 750 Ohm resistor on the VOUT output pin.
+- Less than 50 µA quiescent current.
+- The TMP36 IC is functionally compatible with the LM50 IC.
+- For **long wires** (> 1 meter): add a 750 Ohm resistor on the VOUT output pin.
 - Check **the data sheet ** for detailed information.
 - Check **the example projects** for practical information.
 - Check **the documented sources of this component** for more information.
-
-
-
-## Issues
-
-/
+- **Why this analog temperature sensor is better than a thermistor or thermocouple?** Article: Ditch the NTC thermistor and use an analog temp sensor [High power consumption, not linear, ...\] - Analog Wire - Blogs - TI E2E Community](http://e2e.ti.com/blogs_/b/analogwire/archive/2013/05/31/ditch-the-ntc-thermistor-use-an-analog-temp-sensor) 
 
 
 

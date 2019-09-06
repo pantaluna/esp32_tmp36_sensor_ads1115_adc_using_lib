@@ -42,7 +42,7 @@ void peripheral_task(void *pvParameter) {
     esp_err_t f_retval;
 
     mjd_led_config_t led_config =
-        { 0 };
+                { 0 };
     led_config.gpio_num = MY_LED_ON_DEVBOARD_GPIO_NUM; // (Huzzah32 #13) (Lolin32lite #22)
     led_config.wiring_type = MY_LED_ON_DEVBOARD_WIRING_TYPE; // (Huzzah32 1=GND) (Lolin32lite 2=VCC)
     mjd_led_config(&led_config);
@@ -55,12 +55,12 @@ void peripheral_task(void *pvParameter) {
 
     // @important Do not use ={} or ={0}
     mjd_ads1115_config_t ads1115_config = MJD_ADS1115_CONFIG_DEFAULT()
-    ;
+            ;
     ads1115_config.i2c_slave_addr = MY_ADS1115_I2C_SLAVE_ADDRESS;
     ads1115_config.i2c_port_num = MY_ADS1115_I2C_MASTER_PORT_NUM;
     ads1115_config.i2c_scl_gpio_num = MY_ADS1115_I2C_SCL_GPIO_NUM;
     ads1115_config.i2c_sda_gpio_num = MY_ADS1115_I2C_SDA_GPIO_NUM;
-    // @tip Omit this line if you do not want to use the ALERT READY PIN (the component will wait a specified milisec-time depending on params).
+    // @tip Omit this line if you do not want to use the ALERT READY PIN; the component will wait a specified milisec-time depending on params but it will wait longer opposed when using the ALERT PIN.
     ads1115_config.alert_ready_gpio_num = MY_ADS1115_ALERT_READY_GPIO_NUM;
     ads1115_config.data_rate = MY_ADS1115_DATA_RATE;
     ads1115_config.pga = MJD_ADS1115_PGA_2_048; // Maximum voltage of TMP36 is 1.75V for 125 Degrees Celsius
@@ -82,15 +82,15 @@ void peripheral_task(void *pvParameter) {
      * LOOP
      */
     mjd_ads1115_data_t ads1115_data =
-        { 0 };
+                { 0 };
     mjd_tmp36_data_t tmp36_data =
-        { 0 };
+                { 0 };
     uint32_t nbr_of_adc_errors = 0;
     float sum_degrees_celsius = 0;
     float min_degrees_celsius = FLT_MAX;
     float max_degrees_celsius = FLT_MIN;
     mjd_log_time();
-    const uint32_t NBR_OF_RUNS = 1000;
+    const uint32_t NBR_OF_RUNS = 100000; // 125 250 100000
     ESP_LOGI(TAG, "TMP36 Measurements via the ADS1115 ADC");
     ESP_LOGI(TAG, "LOOP: NBR_OF_RUNS %u", NBR_OF_RUNS);
     for (uint32_t j = 1; j <= NBR_OF_RUNS; ++j) {
@@ -98,20 +98,30 @@ void peripheral_task(void *pvParameter) {
 
         ESP_LOGI(TAG, "***Measurement#%u", j);
 
-        // A0
+        // A0 (the first TMP36 sensor)
+        f_retval = mjd_ads1115_set_mux(&ads1115_config, MJD_ADS1115_MUX_0_GND);
+        if (f_retval != ESP_OK) {
+            mjd_led_mark_error(MY_LED_ON_DEVBOARD_GPIO_NUM);
+            ++nbr_of_adc_errors;
+            ESP_LOGE(TAG, "%s(). Cannot Set Mux MJD_ADS1115_MUX_0_GND | err %i (%s)", __FUNCTION__, f_retval,
+                    esp_err_to_name(f_retval));
+            // CONTINUE
+            continue;
+        }
         f_retval = mjd_ads1115_cmd_get_single_conversion(&ads1115_config, &ads1115_data);
         if (f_retval != ESP_OK) {
             mjd_led_mark_error(MY_LED_ON_DEVBOARD_GPIO_NUM);
             ++nbr_of_adc_errors;
-            ESP_LOGE(TAG, "%s(). Cannot Get Single Conversion | err %i (%s)", __FUNCTION__, f_retval, esp_err_to_name(f_retval));
+            ESP_LOGE(TAG, "%s(). Cannot Get A0 Single Conversion | err %i (%s)", __FUNCTION__, f_retval,
+                    esp_err_to_name(f_retval));
             // CONTINUE
             continue;
         }
         tmp36_data.in_volts = ads1115_data.volt_value;
         mjd_tmp36_convert_volts_to_degrees_celsius(&tmp36_data);
 
-        ESP_LOGI(TAG, "  TMP36: %.3f Degrees Celsius | ADC Pin A0: raw_value (signed int16): %5i | volt_value (float): %.3f",
-                 tmp36_data.out_degrees_celsius, ads1115_data.raw_value, ads1115_data.volt_value);
+        ESP_LOGI(TAG, "  A0 TMP36: %7.3f Degrees Celsius | ADC Pin A0: raw_value (s int16): %5i | volt_value (float): %6.3f",
+                tmp36_data.out_degrees_celsius, ads1115_data.raw_value, ads1115_data.volt_value);
 
         sum_degrees_celsius += tmp36_data.out_degrees_celsius;
         if (tmp36_data.out_degrees_celsius < min_degrees_celsius) {
@@ -121,23 +131,73 @@ void peripheral_task(void *pvParameter) {
             max_degrees_celsius = tmp36_data.out_degrees_celsius;
         }
 
+        // A1 (the optional second TMP36 sensor)
+        f_retval = mjd_ads1115_set_mux(&ads1115_config, MJD_ADS1115_MUX_1_GND);
+        if (f_retval != ESP_OK) {
+            mjd_led_mark_error(MY_LED_ON_DEVBOARD_GPIO_NUM);
+            ++nbr_of_adc_errors;
+            ESP_LOGE(TAG, "%s(). Cannot Set Mux MJD_ADS1115_MUX_1_GND | err %i (%s)", __FUNCTION__, f_retval,
+                    esp_err_to_name(f_retval));
+            // CONTINUE
+            continue;
+        }
+        f_retval = mjd_ads1115_cmd_get_single_conversion(&ads1115_config, &ads1115_data);
+        if (f_retval != ESP_OK) {
+            mjd_led_mark_error(MY_LED_ON_DEVBOARD_GPIO_NUM);
+            ++nbr_of_adc_errors;
+            ESP_LOGE(TAG, "%s(). Cannot Get A1 Single Conversion | err %i (%s)", __FUNCTION__, f_retval,
+                    esp_err_to_name(f_retval));
+            // CONTINUE
+            continue;
+        }
+        tmp36_data.in_volts = ads1115_data.volt_value;
+        mjd_tmp36_convert_volts_to_degrees_celsius(&tmp36_data);
+
+        ESP_LOGI(TAG, "  A1 TMP36: %7.3f Degrees Celsius | ADC Pin A0: raw_value (s int16): %5i | volt_value (float): %6.3f",
+                tmp36_data.out_degrees_celsius, ads1115_data.raw_value, ads1115_data.volt_value);
+
+        // A2 (the optional third TMP36 sensor)
+        f_retval = mjd_ads1115_set_mux(&ads1115_config, MJD_ADS1115_MUX_2_GND);
+        if (f_retval != ESP_OK) {
+            mjd_led_mark_error(MY_LED_ON_DEVBOARD_GPIO_NUM);
+            ++nbr_of_adc_errors;
+            ESP_LOGE(TAG, "%s(). Cannot Set A2 Mux MJD_ADS1115_MUX_2_GND | err %i (%s)", __FUNCTION__, f_retval,
+                    esp_err_to_name(f_retval));
+            // CONTINUE
+            continue;
+        }
+        f_retval = mjd_ads1115_cmd_get_single_conversion(&ads1115_config, &ads1115_data);
+        if (f_retval != ESP_OK) {
+            mjd_led_mark_error(MY_LED_ON_DEVBOARD_GPIO_NUM);
+            ++nbr_of_adc_errors;
+            ESP_LOGE(TAG, "%s(). Cannot Get Single Conversion | err %i (%s)", __FUNCTION__, f_retval,
+                    esp_err_to_name(f_retval));
+            // CONTINUE
+            continue;
+        }
+        tmp36_data.in_volts = ads1115_data.volt_value;
+        mjd_tmp36_convert_volts_to_degrees_celsius(&tmp36_data);
+
+        ESP_LOGI(TAG, "  A2 TMP36: %7.3f Degrees Celsius | ADC Pin A0: raw_value (s int16): %5i | volt_value (float): %6.3f",
+                tmp36_data.out_degrees_celsius, ads1115_data.raw_value, ads1115_data.volt_value);
+
+        // LED
         mjd_led_off(MY_LED_ON_DEVBOARD_GPIO_NUM);
 
-        // @optional A visual delay between reading loop items, is sometimes easier when debugging
-        /////vTaskDelay(RTOS_DELAY_1SEC);
-
+        // @doc 1. A visual delay between loop items, is sometimes easier when debugging. 2. Avoid self-heating of the sensor.
+        vTaskDelay(RTOS_DELAY_2SEC);
     }
     ESP_LOGI(TAG, "REPORT:");
     ESP_LOGI(TAG, "  NBR_OF_RUNS:       %u", NBR_OF_RUNS);
     ESP_LOGI(TAG, "  nbr_of_adc_errors: %u", nbr_of_adc_errors);
-    ESP_LOGI(TAG, "  TMP36 Temperature Readings:");
-    ESP_LOGI(TAG, "    AVG degrees_celsius  min_degrees_celsius  max_degrees_celsius");
+    ESP_LOGI(TAG, "  A0 TMP36#1 Temperature Readings:");
+    ESP_LOGI(TAG, "    AVG degrees_celsius  MIN degrees_celsius  MAX degrees_celsius");
     ESP_LOGI(TAG, "    -------------------  -------------------  -------------------");
     ESP_LOGI(TAG, "    %19.3f  %19.3f  %19.3f", sum_degrees_celsius / NBR_OF_RUNS, min_degrees_celsius, max_degrees_celsius);
 
     /*
      * DEVICE DE-INIT
-     * @doc The mjd_tmp36 component does not require deinit.
+     * @doc The mjd_tmp36 component does not require deinit() yet.
      */
     f_retval = mjd_ads1115_deinit(&ads1115_config);
     if (f_retval != ESP_OK) {
@@ -182,9 +242,10 @@ void app_main() {
     /*
      * Sensor Task
      */
-    xReturned = xTaskCreatePinnedToCore(&peripheral_task, "peripheral_task (name)", MYAPP_RTOS_TASK_STACK_SIZE_8K, NULL, RTOS_TASK_PRIORITY_NORMAL,
-    NULL,
-    APP_CPU_NUM);
+    xReturned = xTaskCreatePinnedToCore(&peripheral_task, "peripheral_task (name)", MYAPP_RTOS_TASK_STACK_SIZE_8K, NULL,
+            RTOS_TASK_PRIORITY_NORMAL,
+            NULL,
+            APP_CPU_NUM);
     if (xReturned == pdPASS) {
         ESP_LOGI(TAG, "OK Task has been created, and is running right now");
     }

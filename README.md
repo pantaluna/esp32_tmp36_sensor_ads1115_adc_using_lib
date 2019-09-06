@@ -1,11 +1,17 @@
 ## Project Description
-This project demonstrates the components mjd_ads1115 and mjd_tmp36. The mjd_ads1115 component for the TI ADS1115 Analog-To-Digital-Convertor is used to read the voltage output of the analog temperature sensor. The mjd_tmp36 component for the TMP36 sensor is used to convert the raw voltage reading of the ADC to the ambient temperature in Degrees Celsius transparently.
+This project demonstrates the components **mjd_ads1115** and **mjd_tmp36**.
 
-The Gain of the ADC is set to 2.048V to achieve a higher accuracy of the voltage readings (the default of the mjd_ads1115 component is 4.096V). The 2.048V covers the maximum voltage of the TMP36 sensor of 1.75V for +-125 Degrees Celsius (maximum temperature).
+The **mjd_ads1115** component for the TI ADS1115 Analog-To-Digital-Convertor is used to read the voltage output of the analog temperature sensor.
+
+The **mjd_tmp36** component for the TMP36 sensor is used to convert the raw voltage reading of the ADC to the ambient temperature in Degrees Celsius.
+
+The **Gain (PGA)** of the ADC is set to **2.048V** for this project to achieve a higher accuracy of the voltage readings (the default of the mjd_ads1115 component is 4.096V). The 2.048V covers the maximum voltage of the TMP36 sensor of 1.75V for +-125 degrees Celsius (its maximum temperature).
 
 Go to the component directory "components/mjd_tmp36" for more documentation, suggested breakout boards (if relevant), installation and wiring instructions, data sheets, FAQ, photo's, etc.
 
 Go to the component directory "components/mjd_ads1115" for more documentation, suggested breakout boards (if relevant), installation and wiring instructions, data sheets, FAQ, photo's, etc.
+
+**The temperature accuracy of this sensor is +-2°C** so don't use this sensor if you want to perform accurate temperature measurements.
 
 
 
@@ -14,9 +20,7 @@ Go to the component directory "components/mjd_ads1115" for more documentation, s
 ### Hardware
 
 - A decent ESP development board. I suggest to buy a popular development board with good technical documentation and a significant user base. Examples: [Adafruit HUZZAH32](https://www.adafruit.com/product/3405),  [Espressif ESP32-DevKitC](http://espressif.com/en/products/hardware/esp32-devkitc/overview), [Pycom WiPy](https://pycom.io/hardware/), [Wemos D32](https://wiki.wemos.cc/products:d32:d32).
-- The peripherals that are used in the project.
-  @tip The README of each component contains a section "Shop Products".
-  @example A Bosch BME280 meteo sensor breakout board.
+- The peripherals that are used in the project. The README of each component contains a section "Shop Products".
 
 ### Software: ESP-IDF v3.2
 
@@ -25,7 +29,7 @@ Go to the component directory "components/mjd_ads1115" for more documentation, s
 ```
 mkdir ~/esp
 cd    ~/esp
-git clone -b v3.3 --recursive https://github.com/espressif/esp-idf.git esp-idf-v3.2
+git clone -b v3.2 --recursive https://github.com/espressif/esp-idf.git esp-idf-v3.2
 ```
 
 - A C language editor or the Eclipse IDE CDT (instructions also @ http://esp-idf.readthedocs.io/en/latest/get-started/index.html).
@@ -43,7 +47,7 @@ TMP36 SENSOR PIN LAYOUT:
 PIN#  PIN NAME	  Description
 ----  ----------  -----------
  1    VCC         Power supply (3.3V for the ESP32)
- 2    VOUT        Voltage Output
+ 2    VOUT        Analog voltage output (the measurement)
  3    GND         Ground
 ```
 
@@ -72,6 +76,34 @@ TMP36 PIN#  PIN NAME  MCU PIN#
          1  VCC       GPIO#21
          2  VOUT      VCC 3.3V
          3  GND       GND
+
+- Connect a 0.1uF ceramic capacitor (I chose 100uF) between the TMP36's pins VCC and GND. It should be as close as possible to the VCC pin of the sensor.
+```
+
+
+
+```
+WIRING DIAGRAM: TMP36#1 - ADS1115:
+
+TMP36#1 PIN#  PIN NAME  ADS1115 PIN
+------------  --------  -----------
+           2  VOUT      A0
+
+
+Optional:
+- Hookup a second TMP36 sensor to the ADS1115 pin A1.
+- Hookup a third TMP36 sensor to the ADS1115 pin A2.
+```
+
+
+
+```
+Tips when using long cables:
+- When using a long cable, e.g. an Ethernet CAT5E cable of 75cm, between the output line of the sensor and the MCU then put a 1K resistor in series with the output line of the sensor. Place the resistor relatively close to the TMP36 sensor's voltage output pin.
+
+Tips when operating in noisy environments:
+- Connect a +-2.2uF tantalum capacitor between the TMP36's pins VCC and GND when the
+  device is operated in the presence of high frequency radiated or conducted noise.
 ```
 
 
@@ -109,34 +141,35 @@ I (2459) mjd_ads1115:   LOWTHRESHOLD:  0x0 0b0000000000000000 (0)
 I (2469) mjd_ads1115:   HIGHTHRESHOLD: 0xFFFF 0b1111111111111111 (65535)
 I (2479) mjd_ads1115:   CONVERSIONREADYPININLOWREG: 0x0 0b00000000 (0)
 I (2479) mjd_ads1115:   CONVERSIONREADYPININLOWREG: 0x1 0b00000001 (1)
-I (2489) mjd_tmp36: TMP36 Analog Temperature Sensor: config:
-I (2499) mjd_tmp36:   _offset_volts:                   0.500000
-I (2499) mjd_tmp36:   _scale_degrees_celsius_per_volt: 0.010000
-I (2509) mjd: *** 19700101000002 Thu Jan  1 00:00:02 1970
-I (2519) myapp: TMP36 Measurements via the ADS1115 ADC
-I (2519) myapp: LOOP: NBR_OF_RUNS 1000
-I (2529) myapp: ***Measurement#1
-I (2669) myapp:   TMP36: 22.052 Degrees Celsius | ADC Pin A0: raw_value (signed int16): 11528 | volt_value (float): 0.721
-I (2669) myapp: ***Measurement#2
-I (2809) myapp:   TMP36: 22.065 Degrees Celsius | ADC Pin A0: raw_value (signed int16): 11530 | volt_value (float): 0.721
-I (2809) myapp: ***Measurement#3
-I (2949) myapp:   TMP36: 22.121 Degrees Celsius | ADC Pin A0: raw_value (signed int16): 11539 | volt_value (float): 0.721
+I (2609) mjd_tmp36: TMP36 Analog Temperature Sensor: config:
+I (2619) mjd_tmp36:   _offset_volts:                   0.500000
+I (2619) mjd_tmp36:   _scale_degrees_celsius_per_volt: 0.010000
+I (2629) mjd: *** DATETIME 19700101000002 Thu Jan  1 00:00:02 1970
+I (2639) myapp: TMP36 Measurements via the ADS1115 ADC
+I (2639) myapp: LOOP: NBR_OF_RUNS 100000
+
+I (2649) myapp: ***Measurement#1
+I (2779) myapp:   A0 TMP36:  22.665 Degrees Celsius | ADC Pin A0: raw_value (s int16): 11626 | volt_value (float):  0.727
+I (2909) myapp:   A1 TMP36:  22.952 Degrees Celsius | ADC Pin A0: raw_value (s int16): 11672 | volt_value (float):  0.730
+I (3039) myapp:   A2 TMP36:  22.652 Degrees Celsius | ADC Pin A0: raw_value (s int16): 11624 | volt_value (float):  0.727
+
+I (5039) myapp: ***Measurement#2
+I (5169) myapp:   A0 TMP36:  22.671 Degrees Celsius | ADC Pin A0: raw_value (s int16): 11627 | volt_value (float):  0.727
+I (5299) myapp:   A1 TMP36:  22.940 Degrees Celsius | ADC Pin A0: raw_value (s int16): 11670 | volt_value (float):  0.729
+I (5429) myapp:   A2 TMP36:  22.652 Degrees Celsius | ADC Pin A0: raw_value (s int16): 11624 | volt_value (float):  0.727
+
+I (7429) myapp: ***Measurement#3
+I (7559) myapp:   A0 TMP36:  22.665 Degrees Celsius | ADC Pin A0: raw_value (s int16): 11626 | volt_value (float):  0.727
+I (7689) myapp:   A1 TMP36:  22.940 Degrees Celsius | ADC Pin A0: raw_value (s int16): 11670 | volt_value (float):  0.729
+I (7819) myapp:   A2 TMP36:  22.646 Degrees Celsius | ADC Pin A0: raw_value (s int16): 11623 | volt_value (float):  0.726
+
+I (9819) myapp: ***Measurement#4
+I (9949) myapp:   A0 TMP36:  22.665 Degrees Celsius | ADC Pin A0: raw_value (s int16): 11626 | volt_value (float):  0.727
+I (10079) myapp:   A1 TMP36:  22.933 Degrees Celsius | ADC Pin A0: raw_value (s int16): 11669 | volt_value (float):  0.729
+I (10209) myapp:   A2 TMP36:  22.621 Degrees Celsius | ADC Pin A0: raw_value (s int16): 11619 | volt_value (float):  0.726
 
 ...
-I (142249) myapp:   TMP36: 21.952 Degrees Celsius | ADC Pin A0: raw_value (signed int16): 11512 | volt_value (float): 0.720
-I (142249) myapp: ***Measurement#999
-I (142389) myapp:   TMP36: 21.933 Degrees Celsius | ADC Pin A0: raw_value (signed int16): 11509 | volt_value (float): 0.719
-I (142389) myapp: ***Measurement#1000
-I (142529) myapp:   TMP36: 21.965 Degrees Celsius | ADC Pin A0: raw_value (signed int16): 11514 | volt_value (float): 0.720
-I (142619) myapp: REPORT:
-I (142629) myapp:   NBR_OF_RUNS:       1000
-I (142629) myapp:   nbr_of_adc_errors: 0
-I (142629) myapp:   TMP36 Temperature Readings:
-I (142639) myapp:     AVG degrees_celsius  min_degrees_celsius  max_degrees_celsius
-I (142649) myapp:     -------------------  -------------------  -------------------
-I (142659) myapp:                  22.022               21.877               22.165
-I (142669) mjd: *** 19700101000222 Thu Jan  1 00:02:22 1970
-W (142669) mjd: mjd_rtos_wait_forever()
+
 ```
 
 

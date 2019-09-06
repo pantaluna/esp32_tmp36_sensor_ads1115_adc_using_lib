@@ -1304,12 +1304,11 @@ esp_err_t mjd_ads1115_init(mjd_ads1115_config_t* param_ptr_config) {
     /*
      * I2C
      *
-     * @important The ADS1115 breakout board already contains a 10K pullup for the SCL & SDA pins. So the MCU's internal pullups for these pins can be disabled.
+     * @important The ADS1115 breakout board contains a 10K pullup for the SCL & SDA pins. So the MCU's internal pullups for these pins can be disabled.
      */
     if (param_ptr_config->manage_i2c_driver == true) {
         // Config
-        i2c_config_t i2c_conf =
-            { 0 };
+        i2c_config_t i2c_conf = { 0 };
         i2c_conf.mode = I2C_MODE_MASTER;
         i2c_conf.scl_io_num = param_ptr_config->i2c_scl_gpio_num;
         i2c_conf.sda_io_num = param_ptr_config->i2c_sda_gpio_num;
@@ -1381,8 +1380,9 @@ esp_err_t mjd_ads1115_init(mjd_ads1115_config_t* param_ptr_config) {
 
     /*
      * ALERT READY pin: REGISTERS & GPIO & TIMER
-     *   @rule -1 means not used to detect that a measurement is ready to be read.
      *   @doc IN single-shot mode, the ALERT/RDY pin asserts LOW at the end of a conversion by default.
+     *   @doc These ADS1115 breakout boards contain a 10K pullup resistor for the ALERT/READY pin so the internal pullup can be disabled (some ESP32 GPIO#'s have no internal pullup pulldown functionality!).
+     *   @rule -1 means not used to detect that a measurement is ready to be read.
      */
     if (param_ptr_config->alert_ready_gpio_num != -1) {
         // 1. ADS1115 register setting to enable the ALERT READY Pin (3 settings!)
@@ -1413,7 +1413,7 @@ esp_err_t mjd_ads1115_init(mjd_ads1115_config_t* param_ptr_config) {
             { 0 };
         io_conf.pin_bit_mask = (1ULL << param_ptr_config->alert_ready_gpio_num);
         io_conf.mode = GPIO_MODE_INPUT;
-        io_conf.pull_up_en = GPIO_PULLUP_ENABLE;  // @important When configured as a conversion ready pin, ALERT/RDY requires a pullup resistor.
+        io_conf.pull_up_en = GPIO_PULLUP_DISABLE;  // @important When configured as a conversion ready pin, ALERT/RDY requires a pullup resistor.
         io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
         io_conf.intr_type = GPIO_INTR_DISABLE;
         f_retval = gpio_config(&io_conf);
@@ -1423,21 +1423,6 @@ esp_err_t mjd_ads1115_init(mjd_ads1115_config_t* param_ptr_config) {
             goto cleanup;
         }
         _log_alert_ready_pin_value(param_ptr_config);
-
-        // 3. TIMER
-        timer_config_t tconfig = {};
-        tconfig.divider = 64000; // Let the timer tick on a relative slow pace. 1.25 Khz: esp_clk_apb_freq() / 64000 = 1250 ticks/second
-        tconfig.counter_dir = TIMER_COUNT_UP;
-        tconfig.counter_en = TIMER_PAUSE; // Pause when configured (do not start right now)
-        tconfig.alarm_en = TIMER_ALARM_DIS;
-        tconfig.auto_reload = false;
-        f_retval = timer_init(MJD_ADS1115_TIMER_GROUP_ID, MJD_ADS1115_TIMER_ID, &tconfig);
-        if (f_retval != ESP_OK) {
-            ESP_LOGE(TAG, "%s(). timer_init() | err %d %s", __FUNCTION__, f_retval, esp_err_to_name(f_retval));
-            // GOTO
-            goto cleanup;
-        }
-
     } else {
         ESP_LOGI(TAG, "ADS1115 ALERT READY pin disabled in param_ptr_config");
     }
@@ -1540,10 +1525,23 @@ esp_err_t mjd_ads1115_cmd_get_single_conversion(mjd_ads1115_config_t* param_ptr_
         ESP_LOGD(TAG, "%s(). Computed wait delay (ms): %u", __FUNCTION__, delay);
         _delay_millisec(delay);
     } else {
-        // WAIT for the ALERT READY Pin value go LOW -XOR- timeout from esptimer
+        // WAIT for the ALERT READY Pin value go LOW -XOR- timeout from an esp timer
         bool has_timed_out = false;
         const double TIMEOUT_SECONDS = 2; // FAIL when pin is not LOW after 2 seconds
         double timer_counter_value_seconds = 0;
+
+        timer_config_t tconfig = { 0 };
+        tconfig.divider = 64000; // Let the timer tick on a relative slow pace. 1.25 Khz: esp_clk_apb_freq() / uint32_t 64000 = 1250 ticks/second
+        tconfig.counter_dir = TIMER_COUNT_UP;
+        tconfig.counter_en = TIMER_PAUSE; // Pause when configured (do not start right now)
+        tconfig.alarm_en = TIMER_ALARM_DIS;
+        tconfig.auto_reload = false;
+        f_retval = timer_init(MJD_ADS1115_TIMER_GROUP_ID, MJD_ADS1115_TIMER_ID, &tconfig);
+        if (f_retval != ESP_OK) {
+            ESP_LOGE(TAG, "%s(). timer_init() | err %d %s", __FUNCTION__, f_retval, esp_err_to_name(f_retval));
+            // GOTO
+            goto cleanup;
+        }
 
         timer_set_counter_value(MJD_ADS1115_TIMER_GROUP_ID, MJD_ADS1115_TIMER_ID, 00000000ULL);
         timer_start(MJD_ADS1115_TIMER_GROUP_ID, MJD_ADS1115_TIMER_ID);
